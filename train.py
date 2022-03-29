@@ -9,7 +9,7 @@ from ts2vec import TS2Vec
 import tasks
 import datautils
 from utils import init_dl_program, name_with_datetime, pkl_save, data_dropout
-
+import argparse
 def save_checkpoint_callback(
     save_every=1,
     unit='epoch'
@@ -23,22 +23,23 @@ def save_checkpoint_callback(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset', help='The dataset name')
-    parser.add_argument('run_name', help='The folder name used to save model, output and evaluation metrics. This can be set to any word')
-    parser.add_argument('--loader', type=str, required=True, help='The data loader used to load the experimental data. This can be set to UCR, UEA, forecast_csv, forecast_csv_univar, anomaly, or anomaly_coldstart')
+    parser.add_argument('--dataset',default='FaceDetection', help='The dataset name')
+    parser.add_argument('--run_name',default='test_model', help='The folder name used to save model, output and evaluation metrics. This can be set to any word')
+    parser.add_argument('--loader', default='UEA',type=str, required=False, help='The data loader used to load the experimental data. This can be set to UCR, UEA, forecast_csv, forecast_csv_univar, anomaly, or anomaly_coldstart') # required=True
     parser.add_argument('--gpu', type=int, default=0, help='The gpu no. used for training and inference (defaults to 0)')
     parser.add_argument('--batch-size', type=int, default=8, help='The batch size (defaults to 8)')
-    parser.add_argument('--lr', type=float, default=0.001, help='The learning rate (defaults to 0.001)')
-    parser.add_argument('--repr-dims', type=int, default=320, help='The representation dimension (defaults to 320)')
+    parser.add_argument('--lr',type=float, default=0.001, help='The learning rate (defaults to 0.001)')
+    parser.add_argument('--repr-dims', type=int, default=3200, help='The representation dimension (defaults to 320)')
     parser.add_argument('--max-train-length', type=int, default=3000, help='For sequence with a length greater than <max_train_length>, it would be cropped into some sequences, each of which has a length less than <max_train_length> (defaults to 3000)')
     parser.add_argument('--iters', type=int, default=None, help='The number of iterations')
-    parser.add_argument('--epochs', type=int, default=None, help='The number of epochs')
+    parser.add_argument('--epochs', type=int, default=100, help='The number of epochs')
     parser.add_argument('--save-every', type=int, default=None, help='Save the checkpoint every <save_every> iterations/epochs')
     parser.add_argument('--seed', type=int, default=None, help='The random seed')
     parser.add_argument('--max-threads', type=int, default=None, help='The maximum allowed number of threads used by this process')
-    parser.add_argument('--eval', action="store_true", help='Whether to perform evaluation after training')
+    parser.add_argument('--eval',default='default', action="store_true", help='Whether to perform evaluation after training')
     parser.add_argument('--irregular', type=float, default=0, help='The ratio of missing observations (defaults to 0)')
-    args = parser.parse_args()
+    args = parser.parse_args(args=[])
+    # args = parser.parse_known_args(args=[])
     
     print("Dataset:", args.dataset)
     print("Arguments:", str(args))
@@ -88,7 +89,7 @@ if __name__ == '__main__':
         raise ValueError(f"Unknown loader {args.loader}.")
         
         
-    if args.irregular > 0:
+    if args.irregular > 0:  # mask certain ratio
         if task_type == 'classification':
             train_data = data_dropout(train_data, args.irregular)
             test_data = data_dropout(test_data, args.irregular)
