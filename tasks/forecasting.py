@@ -19,7 +19,7 @@ def cal_metrics(pred, target):
     
 def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols):
     padding = 200
-    
+    print('step1')
     t = time.time()
     all_repr = model.encode(
         data,
@@ -29,7 +29,7 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
         batch_size=256
     )
     ts2vec_infer_time = time.time() - t
-    
+    print('step2')
     train_repr = all_repr[:, train_slice]
     valid_repr = all_repr[:, valid_slice]
     test_repr = all_repr[:, test_slice]
@@ -42,6 +42,7 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
     lr_train_time = {}
     lr_infer_time = {}
     out_log = {}
+    print('step3')
     for pred_len in pred_lens:
         train_features, train_labels = generate_pred_samples(train_repr, train_data, pred_len, drop=padding)
         valid_features, valid_labels = generate_pred_samples(valid_repr, valid_data, pred_len)
@@ -76,6 +77,7 @@ def eval_forecasting(model, data, train_slice, valid_slice, test_slice, scaler, 
             'norm': cal_metrics(test_pred, test_labels),
             'raw': cal_metrics(test_pred_inv, test_labels_inv)
         }
+        print('step4')
         
     eval_res = {
         'ours': ours_result,

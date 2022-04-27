@@ -26,7 +26,7 @@ def generate_binomial_mask(B, T, p=0.5):
 class TSEncoder(nn.Module):
     def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='binomial'):
         super().__init__()
-        self.input_dims = input_dims
+        self.input_dims = input_dims  # feature number
         self.output_dims = output_dims
         self.hidden_dims = hidden_dims
         self.mask_mode = mask_mode

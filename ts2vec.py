@@ -77,7 +77,7 @@ class TS2Vec:
         if self.max_train_length is not None:
             sections = train_data.shape[1] // self.max_train_length
             if sections >= 2:
-                train_data = np.concatenate(split_with_nan(train_data, sections, axis=1), axis=0)
+                train_data = np.concatenate(split_with_nan(train_data, sections, axis=1), axis=0)  #在第一维增加数值
 
         temporal_missing = np.isnan(train_data).all(axis=-1).any(axis=0)
         if temporal_missing[0] or temporal_missing[-1]:
@@ -87,7 +87,6 @@ class TS2Vec:
         
         train_dataset = TensorDataset(torch.from_numpy(train_data).to(torch.float))
         train_loader = DataLoader(train_dataset, batch_size=min(self.batch_size, len(train_dataset)), shuffle=True, drop_last=True)
-        
         optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
         
         loss_log = []
@@ -101,6 +100,9 @@ class TS2Vec:
             
             interrupted = False
             for batch in train_loader:
+                # print('list length:', len(batch))
+                # print('batch shape:', batch[0].shape)
+                # print('3 dim batch:', batch)
                 if n_iters is not None and self.n_iters >= n_iters:
                     interrupted = True
                     break
@@ -108,9 +110,9 @@ class TS2Vec:
                 x = batch[0]
                 if self.max_train_length is not None and x.size(1) > self.max_train_length:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
-                    x = x[:, window_offset : window_offset + self.max_train_length]
+                    x = x[:, window_offset : window_offset + self.max_train_length]  # dim-1 : instance
                 x = x.to(self.device)
-                
+                print('x:',x.shape)
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
                 crop_left = np.random.randint(ts_l - crop_l + 1)
@@ -120,8 +122,9 @@ class TS2Vec:
                 crop_offset = np.random.randint(low=-crop_eleft, high=ts_l - crop_eright + 1, size=x.size(0))
                 
                 optimizer.zero_grad()
-                
+                # print('===================x shape:==============',x.shape)
                 out1 = self._net(take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft))
+                # print('===================out1 shape:==============', out1.shape)
                 out1 = out1[:, -crop_l:]
                 
                 out2 = self._net(take_per_row(x, crop_offset + crop_left, crop_eright - crop_left))
@@ -136,7 +139,7 @@ class TS2Vec:
                 loss.backward()
                 optimizer.step()
                 self.net.update_parameters(self._net)
-                    
+                print('loss:',loss)
                 cum_loss += loss.item()
                 n_epoch_iters += 1
                 
@@ -147,7 +150,7 @@ class TS2Vec:
             
             if interrupted:
                 break
-            
+            # print('cum_loss:', cum_loss)
             cum_loss /= n_epoch_iters
             loss_log.append(cum_loss)
             if verbose:

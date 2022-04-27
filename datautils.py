@@ -136,16 +136,16 @@ def _get_time_features(dt):
 
 def load_forecast_csv(name, univar=False):
     data = pd.read_csv(f'datasets/{name}.csv', index_col='date', parse_dates=True)
-    dt_embed = _get_time_features(data.index)
-    n_covariate_cols = dt_embed.shape[-1]
+    dt_embed = _get_time_features(data.index)  # 设置日期特征
+    n_covariate_cols = dt_embed.shape[-1]  # 日期特征数量
     
-    if univar:
+    if univar:  # 对变量时间序列
         if name in ('ETTh1', 'ETTh2', 'ETTm1', 'ETTm2'):
             data = data[['OT']]
         elif name == 'electricity':
             data = data[['MT_001']]
         else:
-            data = data.iloc[:, -1:]
+            data = data.iloc[:, -1:]  # 1 column dataframe
         
     data = data.to_numpy()
     if name == 'ETTh1' or name == 'ETTh2':
