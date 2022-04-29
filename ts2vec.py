@@ -112,7 +112,7 @@ class TS2Vec:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
                     x = x[:, window_offset : window_offset + self.max_train_length]  # dim-1 : instance
                 x = x.to(self.device)
-                print('x:',x.shape)
+                # print('x:',x.shape)
                 ts_l = x.size(1)
                 crop_l = np.random.randint(low=2 ** (self.temporal_unit + 1), high=ts_l+1)
                 crop_left = np.random.randint(ts_l - crop_l + 1)
