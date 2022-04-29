@@ -3,3 +3,5 @@
 __pycache__
 training/*
 scripts/_nohup
+*.gzip
+datasets/Astock_daily_2011_2022.zip
