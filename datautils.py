@@ -8,7 +8,7 @@ import pickle
 from utils import pkl_load, pad_nan_to_target
 from scipy.io.arff import loadarff
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-
+import xarray as xr
 def load_UCR(dataset):
     train_file = os.path.join('datasets/UCR', dataset, dataset + "_TRAIN.tsv")
     test_file = os.path.join('datasets/UCR', dataset, dataset + "_TEST.tsv")
@@ -132,6 +132,54 @@ def _get_time_features(dt):
         dt.month.to_numpy(),
         dt.weekofyear.to_numpy(),
     ], axis=1).astype(np.float)
+
+
+def load_forecast_parquet(file_path):
+    """
+    load file then normalize it and date feature
+    """
+    file_path = r'datasets/Astock_daily_2011_2022.h5'
+    data = pd.read_parquet(file_path)
+    # 添加时间特征
+    dt_embed_2d = _get_time_features(pd.to_datetime(data.reset_index().date.values))  ## 需要改成三维的
+    scaler = StandardScaler().fit(data[:int(data.shape[0] * 0.6)])  # 计算zscore的scaler
+
+    # 特征标准化
+    scaler = StandardScaler().fit(data[:int(data.shape[0] * 0.6)])  # 计算zscore的scaler
+    #     dt_scaler = StandardScaler().fit(dt_embed[:int(dt_embed_2d.shape[0]*0.6)])
+
+    # 维度变换
+    data = data.to_xarray().to_array(dim='factor')  # DataArray Type
+    data = data.transpose('code', 'date', 'factor')  # 维度位置变换
+    data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
+
+    date_length = data.shape[1]  # 数据时间维度长度
+    # 数据集划分
+    train_slice = slice(None, int(0.6 * date_length))
+    valid_slice = slice(int(0.6 * date_length), int(0.8 * date_length))
+    test_slice = slice(int(0.8 * date_length), None)
+
+    # 数据合并
+    data_2dim = data.values.reshape(data.shape[0] * data.shape[1], data.shape[2])
+    data_2dim = scaler.transform(data_2dim)  # 特征标准化
+    data.values = data_2dim.reshape(data.shape[0], data.shape[1], data.shape[2])  # data数值做了标准化
+
+    ## date process
+    dt_embed = _get_time_features(pd.to_datetime(data.date.values))
+    n_covariate_cols = dt_embed.shape[-1]  # 日期特征数量
+    dt_scaler = StandardScaler().fit(dt_embed[train_slice])
+    dt_embed = np.expand_dims(dt_scaler.transform(dt_embed), 0)
+    dt_embed = xr.DataArray(data=np.repeat(dt_embed, data.shape[0], axis=0),
+                            dims=['code', 'date', 'factor'],
+                            coords={
+                                'code': data.code.values,
+                                'date': data.date.values,
+                                'factor': np.array(['dt_{}'.format(x) for x in range(dt_embed.shape[2])])
+                            }
+                            )  # dt_embed 三维DataArray数据
+    data = xr.concat([data, dt_embed], dim='factor')  # 包含dt_embed的data
+    pred_lens = [5, 10]  # 预测时序长度设置
+    return data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols
 
 
 def load_forecast_csv(name, univar=False):
