@@ -93,8 +93,8 @@ class TS2Vec:
         
         while True:
             if n_epochs is not None and self.n_epochs >= n_epochs:
+                print('n_epochs reached!\n n_iters is {}'.format(self.n_iters))
                 break
-            
             cum_loss = 0
             n_epoch_iters = 0
             
@@ -104,9 +104,9 @@ class TS2Vec:
                 # print('batch shape:', batch[0].shape)
                 # print('3 dim batch:', batch)
                 if n_iters is not None and self.n_iters >= n_iters:
+                    print('n_iters reached!\n n_epoch is {}'.format(self.n_epochs))
                     interrupted = True
                     break
-                
                 x = batch[0]
                 if self.max_train_length is not None and x.size(1) > self.max_train_length:
                     window_offset = np.random.randint(x.size(1) - self.max_train_length + 1)
@@ -139,7 +139,7 @@ class TS2Vec:
                 loss.backward()
                 optimizer.step()
                 self.net.update_parameters(self._net)
-                print('loss:',loss)
+                # print('loss:',loss)
                 cum_loss += loss.item()
                 n_epoch_iters += 1
                 

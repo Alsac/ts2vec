@@ -133,17 +133,36 @@ def _get_time_features(dt):
         dt.weekofyear.to_numpy(),
     ], axis=1).astype(np.float)
 
+def _feature_transform(data):
+    """
+    原始特征对数变换
+    """
+    assert set(['open','high','low','close','avg_price','prev_close']) < set(data.columns), 'feature unsatisfied'
+    data['return_rate'] = np.clip(data['close']/data['prev_close']-1, -0.2,0.2)  # 收益率标签
+    data.iloc[:,:-1] = np.log(data.iloc[:,:-1]+1)
+    diff_var = ['open','high','low','close','avg_price']
+    data.loc[:,diff_var] = data.loc[:,diff_var].apply(lambda x:x-data['prev_close'])  # 差分
+    return data
 
-def load_forecast_parquet(file_path):
+def _inverse_feature_transform(data):
+    """
+    _feature_transform对数变换反运算
+    """
+    assert set(['open','high','low','close','avg_price','prev_close']) < set(data.columns), 'feature unsatisfied'
+    diff_var = ['open', 'high', 'low', 'close', 'avg_price']
+    data.loc[:, diff_var] = data.loc[:, diff_var].apply(lambda x: x + data['prev_close'])  # 差分
+    data.iloc[:,:-1] = np.exp(data.iloc[:,:-1]+1)
+    return data
+
+
+def load_forecast_parquet(file_path, log_trans=True):
     """
     load file then normalize it and date feature
     """
-    file_path = r'datasets/Astock_daily_2011_2022.h5'
+    # file_path = r'datasets/Astock_daily_2011_2022.h5'
     data = pd.read_parquet(file_path)
-    # 添加时间特征
-    dt_embed_2d = _get_time_features(pd.to_datetime(data.reset_index().date.values))  ## 需要改成三维的
-    scaler = StandardScaler().fit(data[:int(data.shape[0] * 0.6)])  # 计算zscore的scaler
-
+    if log_trans:
+        data = _feature_transform(data)
     # 特征标准化
     scaler = StandardScaler().fit(data[:int(data.shape[0] * 0.6)])  # 计算zscore的scaler
     #     dt_scaler = StandardScaler().fit(dt_embed[:int(dt_embed_2d.shape[0]*0.6)])
@@ -151,7 +170,6 @@ def load_forecast_parquet(file_path):
     # 维度变换
     data = data.to_xarray().to_array(dim='factor')  # DataArray Type
     data = data.transpose('code', 'date', 'factor')  # 维度位置变换
-    data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
 
     date_length = data.shape[1]  # 数据时间维度长度
     # 数据集划分
@@ -177,7 +195,7 @@ def load_forecast_parquet(file_path):
                                 'factor': np.array(['dt_{}'.format(x) for x in range(dt_embed.shape[2])])
                             }
                             )  # dt_embed 三维DataArray数据
-    data = xr.concat([data, dt_embed], dim='factor')  # 包含dt_embed的data
+    data = xr.concat([dt_embed, data], dim='factor')  # 包含dt_embed的data
     pred_lens = [5, 10]  # 预测时序长度设置
     return data, train_slice, valid_slice, test_slice, scaler, pred_lens, n_covariate_cols
 
